@@ -111,6 +111,20 @@ async function main() {
     },
   })
 
+  const bolsaExistente = await prisma.bolsaDesconto.findFirst({
+    where: { alunoId: aluno.id },
+  })
+
+  if (!bolsaExistente) {
+    await prisma.bolsaDesconto.create({
+      data: {
+        alunoId: aluno.id,
+        tipo: "Bolsa",
+        percentual: 50,
+      },
+    })
+  }
+
   const responsavelExistente = await prisma.responsavel.findFirst({
     where: { telefone: "11977776666" },
   })
@@ -186,6 +200,7 @@ async function main() {
         data: aula.date,
         disciplinaId: disciplina.id,
         professorId: professor.id,
+        tema: "Aula",
       },
     })
   }
@@ -198,8 +213,9 @@ async function main() {
       update: {},
       create: {
         id: `${referencia}-${aluno.id}-${turma.id}`,
-        alunoId: aluno.id,
-        turmaId: turma.id,
+        aluno: { connect: { id: aluno.id } },
+        // @ts-expect-error Prisma Client antigo sem relação turma (regenerar após parar o dev server).
+        turma: { connect: { id: turma.id } },
         referencia,
         valorOriginal: 85000,
         desconto: 0,
@@ -210,14 +226,6 @@ async function main() {
       },
     })
   }
-
-  await prisma.aviso.create({
-    data: {
-      titulo: "Calendário atualizado",
-      mensagem: "Confira as novas datas de aulas deste mês.",
-      turmaId: turmas[0].id,
-    },
-  })
 
   await prisma.logSistema.create({
     data: {

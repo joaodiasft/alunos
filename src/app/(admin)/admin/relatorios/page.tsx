@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/client/api"
 import { formatCurrency, formatPercent } from "@/lib/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -50,6 +51,12 @@ export default function AdminRelatoriosPage() {
         <p className="text-sm text-muted-foreground">
           Indicadores acadêmicos e financeiros do período atual.
         </p>
+      </div>
+
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={() => window.print()}>
+          Exportar PDF
+        </Button>
       </div>
 
       <Card>
