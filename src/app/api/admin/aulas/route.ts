@@ -96,3 +96,47 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true, aulas: criadas })
 }
+
+export async function DELETE(request: NextRequest) {
+  const session = await requireAdmin(request)
+  if (!session?.adminId) {
+    return NextResponse.json({ message: "Não autorizado." }, { status: 401 })
+  }
+
+  const aulas = await prisma.aula.findMany({
+    select: { id: true, turmaId: true, data: true, disciplinaId: true, professorId: true },
+    orderBy: { createdAt: "asc" },
+  })
+
+  const duplicadas: string[] = []
+  const seen = new Map<string, string>()
+  for (const aula of aulas) {
+    const key = [
+      aula.turmaId,
+      aula.data.toISOString(),
+      aula.disciplinaId ?? "null",
+      aula.professorId ?? "null",
+    ].join("|")
+    if (seen.has(key)) {
+      duplicadas.push(aula.id)
+    } else {
+      seen.set(key, aula.id)
+    }
+  }
+
+  if (duplicadas.length) {
+    await prisma.aula.deleteMany({ where: { id: { in: duplicadas } } })
+  }
+
+  await logAdminAction({
+    adminId: session.adminId,
+    acao: "EXCLUIR",
+    entidade: "AulaDuplicada",
+    entidadeId: String(duplicadas.length),
+    depois: { removidas: duplicadas.length },
+    ip: request.headers.get("x-forwarded-for"),
+    userAgent: request.headers.get("user-agent"),
+  })
+
+  return NextResponse.json({ ok: true, removidas: duplicadas.length })
+}

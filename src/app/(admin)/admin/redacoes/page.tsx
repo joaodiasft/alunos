@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 type Turma = { id: string; nome: string }
-type Aluno = { id: string; nome: string }
+type Aluno = { id: string; nome: string; turmas: { turma: { id: string; nome: string } }[] }
 type Redacao = {
   id: string
   referencia: string
@@ -36,6 +36,7 @@ export default function AdminRedacoesPage() {
   const [open, setOpen] = useState(false)
   const [openEditar, setOpenEditar] = useState(false)
   const [editando, setEditando] = useState<Redacao | null>(null)
+  const [erro, setErro] = useState("")
   const [form, setForm] = useState({
     alunoId: "",
     turmaId: "",
@@ -102,7 +103,23 @@ export default function AdminRedacoesPage() {
     carregar()
   }, [filtroAluno, filtroTurma, filtroReferencia])
 
+  const turmasDoAluno = useMemo(() => {
+    const aluno = alunos.find((item) => item.id === form.alunoId)
+    return aluno?.turmas.map((item) => item.turma) ?? turmas
+  }, [alunos, form.alunoId, turmas])
+
+  const turmasDoAlunoEdicao = useMemo(() => {
+    if (!editando) return turmas
+    const aluno = alunos.find((item) => item.id === editando.aluno.id)
+    return aluno?.turmas.map((item) => item.turma) ?? turmas
+  }, [alunos, editando, turmas])
+
   async function salvar() {
+    if (!form.alunoId || !form.referencia) {
+      setErro("Selecione o aluno e informe a referência.")
+      return
+    }
+    setErro("")
     await apiFetch("/api/admin/redacoes", {
       method: "POST",
       body: JSON.stringify({
@@ -149,6 +166,11 @@ export default function AdminRedacoesPage() {
 
   async function salvarEdicao() {
     if (!editando) return
+    if (!formEdicao.referencia) {
+      setErro("Informe a referência.")
+      return
+    }
+    setErro("")
     await apiFetch(`/api/admin/redacoes/${editando.id}`, {
       method: "PUT",
       body: JSON.stringify({
@@ -169,6 +191,13 @@ export default function AdminRedacoesPage() {
 
   return (
     <div className="space-y-6">
+      {erro ? (
+        <Card className="border-danger">
+          <CardContent className="py-3 text-sm text-danger-foreground bg-danger">
+            {erro}
+          </CardContent>
+        </Card>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Notas de redação</h1>
@@ -216,7 +245,7 @@ export default function AdminRedacoesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem turma</SelectItem>
-                    {turmas.map((turma) => (
+                    {turmasDoAluno.map((turma) => (
                       <SelectItem key={turma.id} value={turma.id}>
                         {turma.nome}
                       </SelectItem>
@@ -284,7 +313,9 @@ export default function AdminRedacoesPage() {
                   onChange={(event) => setForm({ ...form, observacoes: event.target.value })}
                 />
               </div>
-              <Button onClick={salvar}>Salvar</Button>
+              <Button onClick={salvar} disabled={!form.alunoId || !form.referencia}>
+                Salvar
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -407,7 +438,7 @@ export default function AdminRedacoesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem turma</SelectItem>
-                  {turmas.map((turma) => (
+                  {turmasDoAlunoEdicao.map((turma) => (
                     <SelectItem key={turma.id} value={turma.id}>
                       {turma.nome}
                     </SelectItem>

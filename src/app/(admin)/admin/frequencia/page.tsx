@@ -57,12 +57,26 @@ export default function AdminFrequenciaPage() {
   const aulasUnicas = useMemo(() => {
     const map = new Map<string, Aula>()
     aulas.forEach((aula) => {
-      if (!map.has(aula.id)) {
-        map.set(aula.id, aula)
+      const key = [
+        aula.turma.id,
+        new Date(aula.data).toISOString(),
+        aula.disciplina?.nome ?? "null",
+      ].join("|")
+      if (!map.has(key)) {
+        map.set(key, aula)
       }
     })
     return Array.from(map.values())
   }, [aulas])
+
+  async function removerDuplicadas() {
+    const confirmar = window.confirm("Deseja remover aulas duplicadas deste calendário?")
+    if (!confirmar) return
+    await apiFetch("/api/admin/aulas", { method: "DELETE" })
+    const query = month ? `?month=${month}` : ""
+    const aulasData = await apiFetch<Aula[]>(`/api/admin/aulas${query}`)
+    setAulas(aulasData)
+  }
 
   const alunosDaTurma = useMemo(() => {
     if (!aulaSelecionada) return []
@@ -112,13 +126,18 @@ export default function AdminFrequenciaPage() {
           <CardTitle>Selecionar aula</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Mês</Label>
-            <Input
-              type="month"
-              value={month}
-              onChange={(event) => setMonth(event.target.value)}
-            />
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="grid gap-2">
+              <Label>Mês</Label>
+              <Input
+                type="month"
+                value={month}
+                onChange={(event) => setMonth(event.target.value)}
+              />
+            </div>
+            <Button variant="outline" onClick={removerDuplicadas}>
+              Remover duplicadas
+            </Button>
           </div>
           <div className="grid gap-2">
             <Label>Aula</Label>
