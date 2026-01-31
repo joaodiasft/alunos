@@ -25,6 +25,7 @@ type Aluno = {
   telefone: string
   token: string
   status: "ATIVO" | "INATIVO"
+  contratoAssinado?: boolean
   turmas: { turma: { id: string; nome: string } }[]
 }
 
@@ -34,11 +35,13 @@ export default function AdminAlunosPage() {
   const [open, setOpen] = useState(false)
   const [openEditar, setOpenEditar] = useState(false)
   const [alunoEditando, setAlunoEditando] = useState<Aluno | null>(null)
+  const [erro, setErro] = useState("")
   const [form, setForm] = useState({
     nome: "",
     dataNascimento: "",
     telefone: "",
     turmaIds: [] as string[],
+    contratoAssinado: false,
     responsavelNome: "",
     responsavelTelefone: "",
   })
@@ -48,6 +51,7 @@ export default function AdminAlunosPage() {
     telefone: "",
     turmaIds: [] as string[],
     status: "ATIVO" as "ATIVO" | "INATIVO",
+    contratoAssinado: false,
   })
 
   async function carregarDados() {
@@ -58,9 +62,9 @@ export default function AdminAlunosPage() {
       ])
       setAlunos(alunosData)
       setTurmas(turmasData)
+      setErro("")
     } catch {
-      setAlunos([])
-      setTurmas([])
+      setErro("Não foi possível carregar os alunos.")
     }
   }
 
@@ -69,20 +73,26 @@ export default function AdminAlunosPage() {
   }, [])
 
   async function criarAluno() {
-    await apiFetch("/api/admin/alunos", {
-      method: "POST",
-      body: JSON.stringify(form),
-    })
-    setOpen(false)
-    setForm({
-      nome: "",
-      dataNascimento: "",
-      telefone: "",
-      turmaIds: [],
-      responsavelNome: "",
-      responsavelTelefone: "",
-    })
-    await carregarDados()
+    try {
+      setErro("")
+      await apiFetch("/api/admin/alunos", {
+        method: "POST",
+        body: JSON.stringify(form),
+      })
+      setOpen(false)
+      setForm({
+        nome: "",
+        dataNascimento: "",
+        telefone: "",
+        turmaIds: [],
+        contratoAssinado: false,
+        responsavelNome: "",
+        responsavelTelefone: "",
+      })
+      await carregarDados()
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao cadastrar aluno.")
+    }
   }
 
   async function inativarAluno(id: string) {
@@ -98,6 +108,7 @@ export default function AdminAlunosPage() {
       telefone: aluno.telefone,
       turmaIds: aluno.turmas.map((item) => item.turma.id),
       status: aluno.status,
+      contratoAssinado: aluno.contratoAssinado ?? false,
     })
     setOpenEditar(true)
   }
@@ -112,6 +123,7 @@ export default function AdminAlunosPage() {
         telefone: formEdicao.telefone,
         status: formEdicao.status,
         turmaIds: formEdicao.turmaIds,
+        contratoAssinado: formEdicao.contratoAssinado,
       }),
     })
     setOpenEditar(false)
@@ -121,6 +133,13 @@ export default function AdminAlunosPage() {
 
   return (
     <div className="space-y-6">
+      {erro ? (
+        <Card className="border-danger">
+          <CardContent className="py-3 text-sm text-danger-foreground bg-danger">
+            {erro}
+          </CardContent>
+        </Card>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Alunos</h1>
@@ -181,6 +200,15 @@ export default function AdminAlunosPage() {
                     )
                   })}
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={form.contratoAssinado}
+                  onCheckedChange={(value) =>
+                    setForm((prev) => ({ ...prev, contratoAssinado: Boolean(value) }))
+                  }
+                />
+                <Label>Contrato assinado</Label>
               </div>
               <div className="grid gap-2">
                 <Label>Responsável (opcional)</Label>
@@ -277,6 +305,15 @@ export default function AdminAlunosPage() {
                   })}
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={formEdicao.contratoAssinado}
+                  onCheckedChange={(value) =>
+                    setFormEdicao((prev) => ({ ...prev, contratoAssinado: Boolean(value) }))
+                  }
+                />
+                <Label>Contrato assinado</Label>
+              </div>
               <Button onClick={salvarEdicao}>Salvar</Button>
             </div>
           </DialogContent>
@@ -295,6 +332,7 @@ export default function AdminAlunosPage() {
                 <TableHead>Token</TableHead>
                 <TableHead>Turma</TableHead>
                 <TableHead>Nascimento</TableHead>
+                <TableHead>Contrato</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -310,6 +348,7 @@ export default function AdminAlunosPage() {
                       : "-"}
                   </TableCell>
                   <TableCell>{formatDate(aluno.dataNascimento)}</TableCell>
+                  <TableCell>{aluno.contratoAssinado ? "Assinado" : "Pendente"}</TableCell>
                   <TableCell>
                     <Badge variant={aluno.status === "ATIVO" ? "secondary" : "outline"}>
                       {aluno.status}

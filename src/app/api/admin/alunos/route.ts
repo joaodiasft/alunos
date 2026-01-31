@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     telefone?: string
     turmaIds?: string[]
     status?: "ATIVO" | "INATIVO"
+    contratoAssinado?: boolean
     responsavelNome?: string
     responsavelTelefone?: string
   }
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       telefone: body.telefone,
       token,
       status: body.status ?? "ATIVO",
+      contratoAssinado: body.contratoAssinado ?? false,
       turmas: body.turmaIds?.length
         ? {
             create: body.turmaIds.map((turmaId) => ({

@@ -25,6 +25,7 @@ export async function PUT(
     status?: "ATIVO" | "INATIVO"
     turmaId?: string
     turmaIds?: string[]
+    contratoAssinado?: boolean
   }
 
   const alunoAntes = await prisma.aluno.findUnique({
@@ -43,6 +44,7 @@ export async function PUT(
       dataNascimento: body.dataNascimento ? new Date(body.dataNascimento) : undefined,
       telefone: body.telefone ?? undefined,
       status: body.status ?? undefined,
+      contratoAssinado: body.contratoAssinado ?? undefined,
     },
   })
 
