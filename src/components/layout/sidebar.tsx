@@ -14,6 +14,7 @@ const items = [
   { href: "/admin/responsaveis", label: "Responsáveis" },
   { href: "/admin/aulas", label: "Aulas" },
   { href: "/admin/frequencia", label: "Frequência" },
+  { href: "/admin/redacoes", label: "Redação" },
   { href: "/admin/financeiro", label: "Financeiro" },
   { href: "/admin/relatorios", label: "Relatórios" },
   { href: "/admin/logs", label: "Logs" },

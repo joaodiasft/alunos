@@ -28,15 +28,23 @@ export async function GET(request: NextRequest) {
   }
 
   const alunosIds = responsavel.alunos.map((item) => item.alunoId)
-  const mensalidades = await prisma.mensalidade.findMany({
-    where: { alunoId: { in: alunosIds } },
-    include: { pagamentos: true, aluno: true },
-    orderBy: { vencimento: "desc" },
-  })
+  const [mensalidades, redacoes] = await Promise.all([
+    prisma.mensalidade.findMany({
+      where: { alunoId: { in: alunosIds } },
+      include: { pagamentos: true, aluno: true },
+      orderBy: { vencimento: "desc" },
+    }),
+    prisma.redacaoNota.findMany({
+      where: { alunoId: { in: alunosIds } },
+      include: { aluno: true, turma: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ])
 
   return NextResponse.json({
     responsavel,
     alunos: responsavel.alunos.map((item) => item.aluno),
     financeiro: mensalidades,
+    redacoes,
   })
 }

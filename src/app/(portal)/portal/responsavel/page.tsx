@@ -22,6 +22,19 @@ type Summary = {
     status: string
     aluno: { nome: string }
   }[]
+  redacoes: {
+    id: string
+    referencia: string
+    competencia1: number
+    competencia2: number
+    competencia3: number
+    competencia4: number
+    competencia5: number
+    total: number
+    observacoes?: string | null
+    aluno: { nome: string }
+    turma?: { nome: string } | null
+  }[]
 }
 
 export default function PortalResponsavelPage() {
@@ -108,6 +121,54 @@ export default function PortalResponsavelPage() {
                       <TableCell>{item.status}</TableCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Notas de redação por competência</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aluno</TableHead>
+                    <TableHead>Referência</TableHead>
+                    <TableHead>Turma</TableHead>
+                    <TableHead>C1</TableHead>
+                    <TableHead>C2</TableHead>
+                    <TableHead>C3</TableHead>
+                    <TableHead>C4</TableHead>
+                    <TableHead>C5</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Observações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data?.redacoes?.length ? (
+                    data.redacoes.map((nota) => (
+                      <TableRow key={nota.id}>
+                        <TableCell className="font-medium">{nota.aluno.nome}</TableCell>
+                        <TableCell>{nota.referencia}</TableCell>
+                        <TableCell>{nota.turma?.nome ?? "-"}</TableCell>
+                        <TableCell>{nota.competencia1}</TableCell>
+                        <TableCell>{nota.competencia2}</TableCell>
+                        <TableCell>{nota.competencia3}</TableCell>
+                        <TableCell>{nota.competencia4}</TableCell>
+                        <TableCell>{nota.competencia5}</TableCell>
+                        <TableCell className="font-medium">{nota.total}</TableCell>
+                        <TableCell>{nota.observacoes ?? "-"}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={11} className="text-sm text-muted-foreground">
+                        Nenhuma nota lançada.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

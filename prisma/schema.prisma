@@ -84,6 +84,7 @@ model Aluno {
   mensalidades  Mensalidade[]
   bolsas        BolsaDesconto[]
   avisos        Aviso[]
+  redacoes      RedacaoNota[]
   responsaveis  ResponsavelAluno[]
   sessions      Session[]
 }
@@ -125,6 +126,7 @@ model Turma {
   planoFinanceiro FinanceiroPlano?
   mensalidades Mensalidade[]
   avisos       Aviso[]
+  redacoes     RedacaoNota[]
 }
 
 model AlunoTurma {
@@ -242,6 +244,27 @@ model Aviso {
 
   aluno Aluno? @relation(fields: [alunoId], references: [id])
   turma Turma? @relation(fields: [turmaId], references: [id])
+}
+
+model RedacaoNota {
+  id            String   @id @default(cuid())
+  alunoId       String
+  turmaId       String?
+  referencia    String
+  competencia1 Int
+  competencia2 Int
+  competencia3 Int
+  competencia4 Int
+  competencia5 Int
+  total         Int
+  observacoes   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  aluno Aluno @relation(fields: [alunoId], references: [id])
+  turma Turma? @relation(fields: [turmaId], references: [id])
+
+  @@index([alunoId, referencia])
 }
 
 model Pagamento {

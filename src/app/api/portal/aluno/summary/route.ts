@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const turmasIds = aluno.turmas.map((item) => item.turmaId)
   const hoje = new Date()
 
-  const [frequencias, mensalidades, avisos] = await Promise.all([
+  const [frequencias, mensalidades, avisos, redacoes] = await Promise.all([
     prisma.frequencia.findMany({
       where: { alunoId: aluno.id },
       include: { aula: { include: { disciplina: true } } },
@@ -40,6 +40,11 @@ export async function GET(request: NextRequest) {
         : { alunoId: aluno.id },
       orderBy: { createdAt: "desc" },
       take: 5,
+    }),
+    prisma.redacaoNota.findMany({
+      where: { alunoId: aluno.id },
+      include: { turma: true },
+      orderBy: { createdAt: "desc" },
     }),
   ])
 
@@ -88,5 +93,6 @@ export async function GET(request: NextRequest) {
       porDisciplina: Object.values(porDisciplina),
     },
     financeiro: mensalidades,
+    redacoes,
   })
 }
