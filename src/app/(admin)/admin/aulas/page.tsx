@@ -30,9 +30,11 @@ export default function AdminAulasPage() {
   const [month, setMonth] = useState("")
   const [form, setForm] = useState({
     turmaId: "",
-    data: "",
-    disciplinaId: "",
-    professorId: "",
+    datas: [""] as string[],
+    entradas: [{ disciplinaId: "", professorId: "" }] as {
+      disciplinaId: string
+      professorId: string
+    }[],
   })
 
   const carregar = useCallback(async () => {
@@ -73,10 +75,21 @@ export default function AdminAulasPage() {
   async function salvar() {
     await apiFetch("/api/admin/aulas", {
       method: "POST",
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        turmaId: form.turmaId,
+        datas: form.datas.filter(Boolean),
+        entradas: form.entradas.map((entrada) => ({
+          disciplinaId: entrada.disciplinaId || undefined,
+          professorId: entrada.professorId || undefined,
+        })),
+      }),
     })
     setOpen(false)
-    setForm({ turmaId: "", data: "", disciplinaId: "", professorId: "" })
+    setForm({
+      turmaId: "",
+      datas: [""],
+      entradas: [{ disciplinaId: "", professorId: "" }],
+    })
     await carregar()
   }
 
@@ -115,48 +128,114 @@ export default function AdminAulasPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Data</Label>
-                <Input
-                  type="datetime-local"
-                  value={form.data}
-                  onChange={(event) => setForm({ ...form, data: event.target.value })}
-                />
+                <Label>Datas (até 4)</Label>
+                <div className="grid gap-2">
+                  {form.datas.map((data, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        type="datetime-local"
+                        value={data}
+                        onChange={(event) => {
+                          const datas = [...form.datas]
+                          datas[index] = event.target.value
+                          setForm({ ...form, datas })
+                        }}
+                      />
+                      {form.datas.length > 1 ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const datas = form.datas.filter((_, i) => i !== index)
+                            setForm({ ...form, datas })
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+                  {form.datas.length < 4 ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setForm({ ...form, datas: [...form.datas, ""] })}
+                    >
+                      Adicionar data
+                    </Button>
+                  ) : null}
+                </div>
               </div>
               <div className="grid gap-2">
-                <Label>Disciplina</Label>
-                <Select
-                  value={form.disciplinaId}
-                  onValueChange={(value) => setForm({ ...form, disciplinaId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {disciplinas.map((disciplina) => (
-                      <SelectItem key={disciplina.id} value={disciplina.id}>
-                        {disciplina.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Professor</Label>
-                <Select
-                  value={form.professorId}
-                  onValueChange={(value) => setForm({ ...form, professorId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {professores.map((professor) => (
-                      <SelectItem key={professor.id} value={professor.id}>
-                        {professor.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Disciplinas e professores (Exatas: 3)</Label>
+                <div className="grid gap-3">
+                  {form.entradas.map((entrada, index) => (
+                    <div key={index} className="grid gap-2 rounded-md border border-border p-3">
+                      <Select
+                        value={entrada.disciplinaId}
+                        onValueChange={(value) => {
+                          const entradas = [...form.entradas]
+                          entradas[index] = { ...entradas[index], disciplinaId: value }
+                          setForm({ ...form, entradas })
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Disciplina" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {disciplinas.map((disciplina) => (
+                            <SelectItem key={disciplina.id} value={disciplina.id}>
+                              {disciplina.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={entrada.professorId}
+                        onValueChange={(value) => {
+                          const entradas = [...form.entradas]
+                          entradas[index] = { ...entradas[index], professorId: value }
+                          setForm({ ...form, entradas })
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Professor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {professores.map((professor) => (
+                            <SelectItem key={professor.id} value={professor.id}>
+                              {professor.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {form.entradas.length > 1 ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const entradas = form.entradas.filter((_, i) => i !== index)
+                            setForm({ ...form, entradas })
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        entradas: [...form.entradas, { disciplinaId: "", professorId: "" }],
+                      })
+                    }
+                  >
+                    Adicionar disciplina/professor
+                  </Button>
+                </div>
               </div>
               <Button onClick={salvar}>Salvar</Button>
             </div>

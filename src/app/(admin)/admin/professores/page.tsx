@@ -19,7 +19,10 @@ type Professor = {
 export default function AdminProfessoresPage() {
   const [professores, setProfessores] = useState<Professor[]>([])
   const [open, setOpen] = useState(false)
+  const [openEditar, setOpenEditar] = useState(false)
+  const [professorEditando, setProfessorEditando] = useState<Professor | null>(null)
   const [form, setForm] = useState({ nome: "", email: "", telefone: "" })
+  const [formEdicao, setFormEdicao] = useState({ nome: "", email: "", telefone: "" })
 
   async function carregar() {
     try {
@@ -41,6 +44,27 @@ export default function AdminProfessoresPage() {
     })
     setOpen(false)
     setForm({ nome: "", email: "", telefone: "" })
+    await carregar()
+  }
+
+  function abrirEdicao(professor: Professor) {
+    setProfessorEditando(professor)
+    setFormEdicao({
+      nome: professor.nome,
+      email: professor.email ?? "",
+      telefone: professor.telefone ?? "",
+    })
+    setOpenEditar(true)
+  }
+
+  async function salvarEdicao() {
+    if (!professorEditando) return
+    await apiFetch(`/api/admin/professores/${professorEditando.id}`, {
+      method: "PUT",
+      body: JSON.stringify(formEdicao),
+    })
+    setOpenEditar(false)
+    setProfessorEditando(null)
     await carregar()
   }
 
@@ -85,6 +109,39 @@ export default function AdminProfessoresPage() {
             </div>
           </DialogContent>
         </Dialog>
+        <Dialog open={openEditar} onOpenChange={setOpenEditar}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Editar professor</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label>Nome</Label>
+                <Input
+                  value={formEdicao.nome}
+                  onChange={(event) => setFormEdicao({ ...formEdicao, nome: event.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Email</Label>
+                <Input
+                  value={formEdicao.email}
+                  onChange={(event) => setFormEdicao({ ...formEdicao, email: event.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Telefone</Label>
+                <Input
+                  value={formEdicao.telefone}
+                  onChange={(event) =>
+                    setFormEdicao({ ...formEdicao, telefone: event.target.value })
+                  }
+                />
+              </div>
+              <Button onClick={salvarEdicao}>Salvar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -98,6 +155,7 @@ export default function AdminProfessoresPage() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefone</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -106,6 +164,11 @@ export default function AdminProfessoresPage() {
                   <TableCell className="font-medium">{professor.nome}</TableCell>
                   <TableCell>{professor.email ?? "-"}</TableCell>
                   <TableCell>{professor.telefone ?? "-"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => abrirEdicao(professor)}>
+                      Editar
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -43,37 +43,56 @@ export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
     turmaId?: string
     data?: string
+    datas?: string[]
     disciplinaId?: string
     professorId?: string
+    entradas?: { disciplinaId?: string; professorId?: string }[]
   }
 
-  if (!body?.turmaId || !body?.data) {
+  const datas = body.datas?.length ? body.datas : body.data ? [body.data] : []
+  if (!body?.turmaId || datas.length === 0) {
     return NextResponse.json({ message: "Campos obrigatórios ausentes." }, { status: 400 })
   }
 
-  const aula = await prisma.aula.create({
-    data: {
-      turmaId: body.turmaId,
-      data: new Date(body.data),
-      disciplinaId: body.disciplinaId ?? null,
-      professorId: body.professorId ?? null,
-    },
-    include: {
-      turma: true,
-      professor: true,
-      disciplina: true,
-    },
-  })
+  const entradas =
+    body.entradas?.length
+      ? body.entradas
+      : [
+          {
+            disciplinaId: body.disciplinaId ?? null,
+            professorId: body.professorId ?? null,
+          },
+        ]
+
+  const criadas = await Promise.all(
+    datas.flatMap((data) =>
+      entradas.map((entrada) =>
+        prisma.aula.create({
+          data: {
+            turmaId: body.turmaId!,
+            data: new Date(data),
+            disciplinaId: entrada.disciplinaId ?? null,
+            professorId: entrada.professorId ?? null,
+          },
+          include: {
+            turma: true,
+            professor: true,
+            disciplina: true,
+          },
+        })
+      )
+    )
+  )
 
   await logAdminAction({
     adminId: session.adminId,
     acao: "CRIAR",
     entidade: "Aula",
-    entidadeId: aula.id,
-    depois: aula,
+    entidadeId: body.turmaId,
+    depois: { total: criadas.length },
     ip: request.headers.get("x-forwarded-for"),
     userAgent: request.headers.get("user-agent"),
   })
 
-  return NextResponse.json(aula)
+  return NextResponse.json({ ok: true, aulas: criadas })
 }
