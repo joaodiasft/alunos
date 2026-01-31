@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ALUNO
+  RESPONSAVEL
+}
+
+enum AlunoStatus {
+  ATIVO
+  INATIVO
+}
+
+enum Turno {
+  MANHA
+  TARDE
+  NOITE
+}
+
+enum Modalidade {
+  PRESENCIAL
+  ONLINE
+}
+
+enum FrequenciaStatus {
+  PRESENTE
+  FALTA
+  JUSTIFICADA
+}
+
+enum MensalidadeStatus {
+  PENDENTE
+  PAGO
+  ATRASADO
+  ISENTO
+}
+
+enum AprovacaoStatus {
+  PENDENTE
+  APROVADO
+  RECUSADO
+}
+
+enum FormaPagamento {
+  PIX
+  DINHEIRO
+  TRANSFERENCIA
+  CARTAO
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  nome      String
+  senhaHash String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs     LogSistema[]
+  sessions Session[]
+}
+
+model Aluno {
+  id             String        @id @default(cuid())
+  nome           String
+  dataNascimento DateTime
+  telefone       String
+  token          String        @unique
+  status         AlunoStatus   @default(ATIVO)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  turmas        AlunoTurma[]
+  frequencias   Frequencia[]
+  mensalidades  Mensalidade[]
+  bolsas        BolsaDesconto[]
+  avisos        Aviso[]
+  responsaveis  ResponsavelAluno[]
+  sessions      Session[]
+}
+
+model Responsavel {
+  id        String   @id @default(cuid())
+  nome      String
+  telefone  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  alunos   ResponsavelAluno[]
+  sessions Session[]
+}
+
+model ResponsavelAluno {
+  id            String      @id @default(cuid())
+  responsavelId String
+  alunoId       String
+  createdAt     DateTime    @default(now())
+
+  responsavel Responsavel @relation(fields: [responsavelId], references: [id])
+  aluno       Aluno       @relation(fields: [alunoId], references: [id])
+
+  @@unique([responsavelId, alunoId])
+}
+
+model Turma {
+  id          String     @id @default(cuid())
+  nome        String
+  anoLetivo   Int
+  turno       Turno
+  modalidade  Modalidade
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  alunos       AlunoTurma[]
+  aulas        Aula[]
+  planoFinanceiro FinanceiroPlano?
+  mensalidades Mensalidade[]
+  avisos       Aviso[]
+}
+
+model AlunoTurma {
+  id        String   @id @default(cuid())
+  alunoId   String
+  turmaId   String
+  inicioEm  DateTime @default(now())
+  fimEm     DateTime?
+  ativo     Boolean  @default(true)
+
+  aluno Aluno @relation(fields: [alunoId], references: [id])
+  turma Turma @relation(fields: [turmaId], references: [id])
+
+  @@index([alunoId, turmaId])
+}
+
+model Professor {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String?
+  telefone  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  aulas Aula[]
+}
+
+model Disciplina {
+  id        String   @id @default(cuid())
+  nome      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  aulas Aula[]
+}
+
+model Aula {
+  id           String     @id @default(cuid())
+  turmaId      String
+  data         DateTime
+  tema         String?
+  professorId  String?
+  disciplinaId String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  turma      Turma       @relation(fields: [turmaId], references: [id])
+  professor  Professor?  @relation(fields: [professorId], references: [id])
+  disciplina Disciplina? @relation(fields: [disciplinaId], references: [id])
+  frequencias Frequencia[]
+}
+
+model Frequencia {
+  id        String           @id @default(cuid())
+  aulaId    String
+  alunoId   String
+  status    FrequenciaStatus
+  createdAt DateTime         @default(now())
+
+  aula  Aula  @relation(fields: [aulaId], references: [id])
+  aluno Aluno @relation(fields: [alunoId], references: [id])
+
+  @@unique([aulaId, alunoId])
+}
+
+model FinanceiroPlano {
+  id             String   @id @default(cuid())
+  turmaId        String   @unique
+  valorMatricula Int
+  valorMensalidade Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  turma Turma @relation(fields: [turmaId], references: [id])
+}
+
+model BolsaDesconto {
+  id          String   @id @default(cuid())
+  alunoId     String
+  tipo        String
+  percentual  Int?
+  valorFixo   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  aluno Aluno @relation(fields: [alunoId], references: [id])
+}
+
+model Mensalidade {
+  id           String           @id @default(cuid())
+  alunoId      String
+  turmaId      String
+  referencia   String
+  valorOriginal Int
+  desconto     Int
+  valorFinal   Int
+  vencimento   DateTime
+  status       MensalidadeStatus @default(PENDENTE)
+  aprovacao    AprovacaoStatus   @default(PENDENTE)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  aluno      Aluno      @relation(fields: [alunoId], references: [id])
+  turma      Turma      @relation(fields: [turmaId], references: [id])
+  pagamentos Pagamento[]
+}
+
+model Aviso {
+  id        String   @id @default(cuid())
+  titulo    String
+  mensagem  String
+  alunoId   String?
+  turmaId   String?
+  createdAt DateTime @default(now())
+
+  aluno Aluno? @relation(fields: [alunoId], references: [id])
+  turma Turma? @relation(fields: [turmaId], references: [id])
+}
+
+model Pagamento {
+  id           String        @id @default(cuid())
+  mensalidadeId String
+  data         DateTime
+  valorPago    Int
+  forma        FormaPagamento?
+  comprovante  String?
+  observacoes  String?
+  createdAt    DateTime      @default(now())
+
+  mensalidade Mensalidade @relation(fields: [mensalidadeId], references: [id])
+}
+
+model LogSistema {
+  id         String   @id @default(cuid())
+  adminId    String
+  acao       String
+  entidade   String
+  entidadeId String?
+  antes      String?
+  depois     String?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  admin AdminUser @relation(fields: [adminId], references: [id])
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  token         String   @unique
+  role          Role
+  adminId       String?
+  alunoId       String?
+  responsavelId String?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  admin       AdminUser?  @relation(fields: [adminId], references: [id])
+  aluno       Aluno?      @relation(fields: [alunoId], references: [id])
+  responsavel Responsavel? @relation(fields: [responsavelId], references: [id])
+}

@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RMIL Gestão Escolar (Next.js + Prisma + shadcn/ui)
 
-## Getting Started
+Sistema escolar completo com painel administrativo e portais de aluno/responsável.
 
-First, run the development server:
+## Visão geral
+
+- **Admin**: gestão de alunos, turmas, professores, disciplinas, aulas, frequência, financeiro, relatórios e logs.
+- **Aluno**: visão de aulas, frequência e financeiro.
+- **Responsável**: visão dos alunos vinculados e financeiro.
+
+## Tecnologias
+
+- Next.js (App Router)
+- Prisma + PostgreSQL
+- shadcn/ui
+- LocalStorage (sessão client-side)
+
+## Pré-requisitos
+
+- Node.js 18+
+- PostgreSQL (ou Prisma DB)
+
+## Configuração local
+
+1. Instale dependências:
+
+```bash
+npm install
+```
+
+2. Configure o banco (arquivo local `.env` já está ignorado pelo Git):
+
+```
+DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require&pool=true"
+```
+
+3. Gere o Prisma Client e rode migrações:
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+```
+
+4. Rode o seed:
+
+```bash
+npm run prisma:seed
+```
+
+5. Suba o projeto:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Credenciais iniciais
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Admin**: `redas@rmil.com` / `rmil`
+- **Aluno** (seed): token `R001` / telefone `11988887777`
+- **Responsável** (seed): nome `Marina Lima` / telefone `11977776666`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy na Vercel
 
-## Learn More
+1. Crie o projeto na Vercel apontando para este repositório.
+2. Configure a variável de ambiente `DATABASE_URL` nas Settings do projeto.
+3. Execute as migrações em ambiente de produção com `prisma migrate deploy`.
 
-To learn more about Next.js, take a look at the following resources:
+## Estrutura
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app`: rotas e páginas
+- `src/components`: componentes UI (shadcn)
+- `src/lib`: utilitários, auth, Prisma client
+- `prisma`: schema e seed
