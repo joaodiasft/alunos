@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { apiFetch } from "@/lib/client/api"
 import { formatDate } from "@/lib/format"
 import { Button } from "@/components/ui/button"
@@ -59,6 +59,16 @@ export default function AdminAulasPage() {
   useEffect(() => {
     carregar()
   }, [month])
+
+  const aulasUnicas = useMemo(() => {
+    const map = new Map<string, Aula>()
+    aulas.forEach((aula) => {
+      if (!map.has(aula.id)) {
+        map.set(aula.id, aula)
+      }
+    })
+    return Array.from(map.values())
+  }, [aulas])
 
   async function salvar() {
     await apiFetch("/api/admin/aulas", {
@@ -177,7 +187,7 @@ export default function AdminAulasPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {aulas.map((aula) => (
+              {aulasUnicas.map((aula) => (
                 <TableRow key={aula.id}>
                   <TableCell>{formatDate(aula.data)}</TableCell>
                   <TableCell>{aula.turma.nome}</TableCell>

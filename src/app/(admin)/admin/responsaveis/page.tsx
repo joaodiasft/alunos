@@ -22,7 +22,10 @@ export default function AdminResponsaveisPage() {
   const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [open, setOpen] = useState(false)
+  const [openEditar, setOpenEditar] = useState(false)
+  const [responsavelEditando, setResponsavelEditando] = useState<Responsavel | null>(null)
   const [form, setForm] = useState({ nome: "", telefone: "", alunoId: "" })
+  const [formEdicao, setFormEdicao] = useState({ nome: "", telefone: "", alunoId: "" })
 
   async function carregar() {
     try {
@@ -49,6 +52,27 @@ export default function AdminResponsaveisPage() {
     })
     setOpen(false)
     setForm({ nome: "", telefone: "", alunoId: "" })
+    await carregar()
+  }
+
+  function abrirEdicao(responsavel: Responsavel) {
+    setResponsavelEditando(responsavel)
+    setFormEdicao({
+      nome: responsavel.nome,
+      telefone: responsavel.telefone,
+      alunoId: "",
+    })
+    setOpenEditar(true)
+  }
+
+  async function salvarEdicao() {
+    if (!responsavelEditando) return
+    await apiFetch(`/api/admin/responsaveis/${responsavelEditando.id}`, {
+      method: "PUT",
+      body: JSON.stringify(formEdicao),
+    })
+    setOpenEditar(false)
+    setResponsavelEditando(null)
     await carregar()
   }
 
@@ -104,6 +128,50 @@ export default function AdminResponsaveisPage() {
             </div>
           </DialogContent>
         </Dialog>
+        <Dialog open={openEditar} onOpenChange={setOpenEditar}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Editar responsável</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label>Nome</Label>
+                <Input
+                  value={formEdicao.nome}
+                  onChange={(event) => setFormEdicao({ ...formEdicao, nome: event.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Telefone</Label>
+                <Input
+                  value={formEdicao.telefone}
+                  onChange={(event) =>
+                    setFormEdicao({ ...formEdicao, telefone: event.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Vincular aluno (opcional)</Label>
+                <Select
+                  value={formEdicao.alunoId}
+                  onValueChange={(value) => setFormEdicao({ ...formEdicao, alunoId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {alunos.map((aluno) => (
+                      <SelectItem key={aluno.id} value={aluno.id}>
+                        {aluno.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={salvarEdicao}>Salvar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -117,6 +185,7 @@ export default function AdminResponsaveisPage() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Alunos</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -126,6 +195,11 @@ export default function AdminResponsaveisPage() {
                   <TableCell>{responsavel.telefone}</TableCell>
                   <TableCell>
                     {responsavel.alunos.map((item) => item.aluno.nome).join(", ") || "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => abrirEdicao(responsavel)}>
+                      Editar
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

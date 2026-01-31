@@ -57,6 +57,10 @@ export default function AdminFinanceiroPage() {
     valorFixo: "",
   })
 
+  const mensalidadesParaPagamento = mensalidades.filter(
+    (item) => item.aprovacao !== "RECUSADO" && item.status !== "PAGO"
+  )
+
   const carregar = useCallback(async () => {
     try {
       const query = filtroTurma ? `?turmaId=${filtroTurma}` : ""
@@ -70,6 +74,15 @@ export default function AdminFinanceiroPage() {
       setAlunos(alunosData)
       setMensalidades(mensalidadesData)
       setBolsas(bolsasData)
+      if (!gerar.turmaId && turmasData.length > 0) {
+        const agora = new Date()
+        const referenciaAtual = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`
+        setGerar((prev) => ({
+          ...prev,
+          turmaId: turmasData[0].id,
+          referencia: prev.referencia || referenciaAtual,
+        }))
+      }
     } catch {
       setTurmas([])
       setAlunos([])
@@ -200,13 +213,18 @@ export default function AdminFinanceiroPage() {
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mensalidades.map((mensalidade) => (
+                  {mensalidadesParaPagamento.map((mensalidade) => (
                     <SelectItem key={mensalidade.id} value={mensalidade.id}>
-                      {mensalidade.aluno.nome} - {mensalidade.referencia}
+                      {mensalidade.aluno.nome} - {mensalidade.referencia} ({mensalidade.turma.nome})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {mensalidadesParaPagamento.length === 0 ? (
+                <div className="text-xs text-muted-foreground">
+                  Nenhuma mensalidade pendente. Gere as mensalidades do mês primeiro.
+                </div>
+              ) : null}
             </div>
             <div className="grid gap-2">
               <Label>Data do pagamento</Label>

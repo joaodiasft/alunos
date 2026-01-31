@@ -54,6 +54,16 @@ export default function AdminFrequenciaPage() {
     [aulas, aulaId]
   )
 
+  const aulasUnicas = useMemo(() => {
+    const map = new Map<string, Aula>()
+    aulas.forEach((aula) => {
+      if (!map.has(aula.id)) {
+        map.set(aula.id, aula)
+      }
+    })
+    return Array.from(map.values())
+  }, [aulas])
+
   const alunosDaTurma = useMemo(() => {
     if (!aulaSelecionada) return []
     return alunos.filter((aluno) => aluno.turmas.some((t) => t.turma.id === aulaSelecionada.turma.id))
@@ -117,7 +127,7 @@ export default function AdminFrequenciaPage() {
                 <SelectValue placeholder="Selecione a aula" />
               </SelectTrigger>
               <SelectContent>
-                {aulas.map((aula) => (
+                {aulasUnicas.map((aula) => (
                   <SelectItem key={aula.id} value={aula.id}>
                     {formatDate(aula.data)} - {aula.turma.nome}{" "}
                     {aula.disciplina?.nome ? `(${aula.disciplina.nome})` : ""}
