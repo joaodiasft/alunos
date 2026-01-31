@@ -208,22 +208,23 @@ async function main() {
   const referencia = `${anoLetivo}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
   const vencimento = new Date(anoLetivo, new Date().getMonth(), 10)
   for (const turma of turmas.slice(0, 2)) {
+    const createData = {
+      id: `${referencia}-${aluno.id}-${turma.id}`,
+      alunoId: aluno.id,
+      turmaId: turma.id,
+      referencia,
+      valorOriginal: 85000,
+      desconto: 0,
+      valorFinal: 85000,
+      vencimento,
+      status: "PENDENTE",
+      aprovacao: "PENDENTE",
+    } as any
+
     await prisma.mensalidade.upsert({
       where: { id: `${referencia}-${aluno.id}-${turma.id}` },
       update: {},
-      create: {
-        id: `${referencia}-${aluno.id}-${turma.id}`,
-        aluno: { connect: { id: aluno.id } },
-        // @ts-expect-error Prisma Client antigo sem relação turma (regenerar após parar o dev server).
-        turma: { connect: { id: turma.id } },
-        referencia,
-        valorOriginal: 85000,
-        desconto: 0,
-        valorFinal: 85000,
-        vencimento,
-        status: "PENDENTE",
-        aprovacao: "PENDENTE",
-      },
+      create: createData,
     })
   }
 
