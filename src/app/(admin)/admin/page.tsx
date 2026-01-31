@@ -16,6 +16,10 @@ type Relatorio = {
   totalPendenteMes: number
   inadimplenciaQuantidade: number
   inadimplenciaValor: number
+  totalPagamentosMes: number
+  totalMensalidadesMes: number
+  totalAulasMes: number
+  totalBolsas: number
 }
 
 export default function AdminDashboardPage() {
@@ -58,6 +62,16 @@ export default function AdminDashboardPage() {
           title="Total recebido no mês"
           value={data ? formatCurrency(data.totalRecebidoMes) : "-"}
         />
+        <StatCard
+          title="Pagamentos no mês"
+          value={`${data?.totalPagamentosMes ?? "-"}`}
+        />
+        <StatCard
+          title="Mensalidades geradas"
+          value={`${data?.totalMensalidadesMes ?? "-"}`}
+        />
+        <StatCard title="Aulas no período" value={`${data?.totalAulasMes ?? "-"}`} />
+        <StatCard title="Bolsas/Descontos" value={`${data?.totalBolsas ?? "-"}`} />
         <StatCard
           title="Total pendente no mês"
           value={data ? formatCurrency(data.totalPendenteMes) : "-"}

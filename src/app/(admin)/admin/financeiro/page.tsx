@@ -60,6 +60,8 @@ export default function AdminFinanceiroPage() {
   const mensalidadesParaPagamento = mensalidades.filter(
     (item) => item.aprovacao !== "RECUSADO" && item.status !== "PAGO"
   )
+  const mensalidadesPagas = mensalidades.filter((item) => item.status === "PAGO")
+  const totalPago = mensalidadesPagas.reduce((acc, item) => acc + item.valorFinal, 0)
 
   const carregar = useCallback(async () => {
     try {
@@ -442,6 +444,50 @@ export default function AdminFinanceiroPage() {
                         Recusar
                       </Button>
                     </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pagamentos confirmados</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <div>
+              <span className="font-medium text-foreground">{mensalidadesPagas.length}</span>{" "}
+              pagamentos confirmados
+            </div>
+            <div>
+              Total recebido:{" "}
+              <span className="font-medium text-foreground">{formatCurrency(totalPago)}</span>
+            </div>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Aluno</TableHead>
+                <TableHead>Turma</TableHead>
+                <TableHead>Referência</TableHead>
+                <TableHead>Vencimento</TableHead>
+                <TableHead>Valor final</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mensalidadesPagas.map((mensalidade) => (
+                <TableRow key={mensalidade.id}>
+                  <TableCell className="font-medium">{mensalidade.aluno.nome}</TableCell>
+                  <TableCell>{mensalidade.turma.nome}</TableCell>
+                  <TableCell>{mensalidade.referencia}</TableCell>
+                  <TableCell>{formatDate(mensalidade.vencimento)}</TableCell>
+                  <TableCell>{formatCurrency(mensalidade.valorFinal)}</TableCell>
+                  <TableCell>
+                    <Badge className="bg-success text-success-foreground">Pago</Badge>
                   </TableCell>
                 </TableRow>
               ))}

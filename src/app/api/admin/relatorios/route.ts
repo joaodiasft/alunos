@@ -64,35 +64,49 @@ export async function GET(request: NextRequest) {
     fim = endOfMonth(baseMonth)
   }
 
-  const [totalAlunosAtivos, totalTurmas, pagamentosMes, mensalidadesMes, frequenciasMes] =
-    await Promise.all([
-      turmaId
-        ? prisma.alunoTurma.count({
-            where: { turmaId, ativo: true, aluno: { status: "ATIVO" } },
-          })
-        : prisma.aluno.count({ where: { status: "ATIVO" } }),
-      turmaId ? Promise.resolve(1) : prisma.turma.count(),
-      prisma.pagamento.findMany({
-        where: {
+  const [
+    totalAlunosAtivos,
+    totalTurmas,
+    pagamentosMes,
+    mensalidadesMes,
+    frequenciasMes,
+    totalAulasMes,
+    totalBolsas,
+  ] = await Promise.all([
+    turmaId
+      ? prisma.alunoTurma.count({
+          where: { turmaId, ativo: true, aluno: { status: "ATIVO" } },
+        })
+      : prisma.aluno.count({ where: { status: "ATIVO" } }),
+    turmaId ? Promise.resolve(1) : prisma.turma.count(),
+    prisma.pagamento.findMany({
+      where: {
+        data: { gte: inicio, lte: fim },
+        mensalidade: turmaId ? { turmaId } : undefined,
+      },
+    }),
+    prisma.mensalidade.findMany({
+      where: {
+        vencimento: { gte: inicio, lte: fim },
+        turmaId: turmaId ?? undefined,
+      },
+    }),
+    prisma.frequencia.findMany({
+      where: {
+        aula: {
           data: { gte: inicio, lte: fim },
-          mensalidade: turmaId ? { turmaId } : undefined,
-        },
-      }),
-      prisma.mensalidade.findMany({
-        where: {
-          vencimento: { gte: inicio, lte: fim },
           turmaId: turmaId ?? undefined,
         },
-      }),
-      prisma.frequencia.findMany({
-        where: {
-          aula: {
-            data: { gte: inicio, lte: fim },
-            turmaId: turmaId ?? undefined,
-          },
-        },
-      }),
-    ])
+      },
+    }),
+    prisma.aula.count({
+      where: {
+        data: { gte: inicio, lte: fim },
+        turmaId: turmaId ?? undefined,
+      },
+    }),
+    prisma.bolsaDesconto.count(),
+  ])
 
   const totalRecebidoMes = pagamentosMes.reduce((acc, item) => acc + item.valorPago, 0)
   const pendentesMes = mensalidadesMes.filter(
@@ -115,5 +129,9 @@ export async function GET(request: NextRequest) {
     totalPendenteMes,
     inadimplenciaQuantidade,
     inadimplenciaValor,
+    totalPagamentosMes: pagamentosMes.length,
+    totalMensalidadesMes: mensalidadesMes.length,
+    totalAulasMes,
+    totalBolsas,
   })
 }
