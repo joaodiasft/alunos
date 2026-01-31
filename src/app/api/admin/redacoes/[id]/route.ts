@@ -3,19 +3,28 @@ import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/api-auth"
 import { logAdminAction } from "@/lib/admin-log"
 
-function getIdFromRequest(request: NextRequest, params?: { id?: string }) {
-  if (params?.id) return params.id
+async function getIdFromContext(
+  request: NextRequest,
+  context: { params?: Promise<{ id: string }> }
+) {
+  if (context.params) {
+    const resolved = await context.params
+    if (resolved?.id) return resolved.id
+  }
   const parts = request.nextUrl.pathname.split("/")
   return parts[parts.length - 1]
 }
 
-export async function PUT(request: NextRequest, context: { params?: { id?: string } }) {
+export async function PUT(
+  request: NextRequest,
+  context: { params?: Promise<{ id: string }> }
+) {
   const session = await requireAdmin(request)
   if (!session?.adminId) {
     return NextResponse.json({ message: "Não autorizado." }, { status: 401 })
   }
 
-  const id = getIdFromRequest(request, context.params)
+  const id = await getIdFromContext(request, context)
   if (!id) {
     return NextResponse.json({ message: "ID inválido." }, { status: 400 })
   }
@@ -69,13 +78,16 @@ export async function PUT(request: NextRequest, context: { params?: { id?: strin
   return NextResponse.json(redacao)
 }
 
-export async function DELETE(request: NextRequest, context: { params?: { id?: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params?: Promise<{ id: string }> }
+) {
   const session = await requireAdmin(request)
   if (!session?.adminId) {
     return NextResponse.json({ message: "Não autorizado." }, { status: 401 })
   }
 
-  const id = getIdFromRequest(request, context.params)
+  const id = await getIdFromContext(request, context)
   if (!id) {
     return NextResponse.json({ message: "ID inválido." }, { status: 400 })
   }
