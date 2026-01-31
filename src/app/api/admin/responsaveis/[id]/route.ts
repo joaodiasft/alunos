@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/api-auth"
 import { logAdminAction } from "@/lib/admin-log"
 
-export async function PUT(request: NextRequest, context: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   const session = await requireAdmin(request)
   if (!session?.adminId) {
     return NextResponse.json({ message: "Não autorizado." }, { status: 401 })
@@ -15,8 +18,9 @@ export async function PUT(request: NextRequest, context: { params: { id: string 
     alunoId?: string
   }
 
+  const params = await context.params
   const antes = await prisma.responsavel.findUnique({
-    where: { id: context.params.id },
+    where: { id: params.id },
     include: { alunos: true },
   })
 
@@ -25,7 +29,7 @@ export async function PUT(request: NextRequest, context: { params: { id: string 
   }
 
   const responsavel = await prisma.responsavel.update({
-    where: { id: context.params.id },
+    where: { id: params.id },
     data: {
       nome: body.nome ?? undefined,
       telefone: body.telefone ?? undefined,
@@ -54,24 +58,28 @@ export async function PUT(request: NextRequest, context: { params: { id: string 
   return NextResponse.json(responsavel)
 }
 
-export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   const session = await requireAdmin(request)
   if (!session?.adminId) {
     return NextResponse.json({ message: "Não autorizado." }, { status: 401 })
   }
 
-  const antes = await prisma.responsavel.findUnique({ where: { id: context.params.id } })
+  const params = await context.params
+  const antes = await prisma.responsavel.findUnique({ where: { id: params.id } })
   if (!antes) {
     return NextResponse.json({ message: "Responsável não encontrado." }, { status: 404 })
   }
 
-  await prisma.responsavel.delete({ where: { id: context.params.id } })
+  await prisma.responsavel.delete({ where: { id: params.id } })
 
   await logAdminAction({
     adminId: session.adminId,
     acao: "EXCLUIR",
     entidade: "Responsavel",
-    entidadeId: context.params.id,
+    entidadeId: params.id,
     antes,
     ip: request.headers.get("x-forwarded-for"),
     userAgent: request.headers.get("user-agent"),

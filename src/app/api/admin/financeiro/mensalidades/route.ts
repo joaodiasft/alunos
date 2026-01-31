@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
   if (!body?.turmaId || !body?.referencia) {
     return NextResponse.json({ message: "Turma e referência são obrigatórias." }, { status: 400 })
   }
+  const referencia = body.referencia
 
   const turma = await prisma.turma.findUnique({
     where: { id: body.turmaId },
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
 
   const valorOriginal = body.valorMensalidade ?? turma.planoFinanceiro?.valorMensalidade ?? 0
 
-  const [ano, mes] = body.referencia.split("-").map((item) => Number(item))
+  const [ano, mes] = referencia.split("-").map((item) => Number(item))
   const vencimento = new Date(ano, (mes || 1) - 1, 10)
 
   const alunosIds = turma.alunos.map((item) => item.alunoId)
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       const valorFinal = Math.max(valorOriginal - desconto, 0)
 
       return prisma.mensalidade.upsert({
-        where: { id: `${body.referencia}-${alunoId}-${body.turmaId}` },
+        where: { id: `${referencia}-${alunoId}-${body.turmaId}` },
         update: {
           valorOriginal,
           desconto,
@@ -85,10 +86,10 @@ export async function POST(request: NextRequest) {
           vencimento,
         },
         create: {
-          id: `${body.referencia}-${alunoId}-${body.turmaId}`,
+          id: `${referencia}-${alunoId}-${body.turmaId}`,
           alunoId,
           turmaId: body.turmaId!,
-          referencia: body.referencia,
+          referencia,
           valorOriginal,
           desconto,
           valorFinal,

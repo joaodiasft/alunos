@@ -78,14 +78,20 @@ export async function POST(request: NextRequest) {
 
   let responsavelId: string | undefined
   if (body.responsavelNome && body.responsavelTelefone) {
-    const responsavel = await prisma.responsavel.upsert({
+    const existente = await prisma.responsavel.findFirst({
       where: { telefone: body.responsavelTelefone },
-      update: { nome: body.responsavelNome },
-      create: {
-        nome: body.responsavelNome,
-        telefone: body.responsavelTelefone,
-      },
     })
+    const responsavel = existente
+      ? await prisma.responsavel.update({
+          where: { id: existente.id },
+          data: { nome: body.responsavelNome },
+        })
+      : await prisma.responsavel.create({
+          data: {
+            nome: body.responsavelNome,
+            telefone: body.responsavelTelefone,
+          },
+        })
     responsavelId = responsavel.id
     await prisma.responsavelAluno.create({
       data: { responsavelId: responsavel.id, alunoId: aluno.id },

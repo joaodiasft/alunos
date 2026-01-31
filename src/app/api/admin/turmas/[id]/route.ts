@@ -3,13 +3,17 @@ import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/api-auth"
 import { logAdminAction } from "@/lib/admin-log"
 
-export async function PUT(request: NextRequest, context: { params: { id?: string } }) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   const session = await requireAdmin(request)
   if (!session?.adminId) {
     return NextResponse.json({ message: "Não autorizado." }, { status: 401 })
   }
 
-  const id = context.params?.id ?? request.nextUrl.pathname.split("/").pop()
+  const params = await context.params
+  const id = params?.id ?? request.nextUrl.pathname.split("/").pop()
   if (!id) {
     return NextResponse.json({ message: "ID da turma ausente." }, { status: 400 })
   }
@@ -78,13 +82,17 @@ export async function PUT(request: NextRequest, context: { params: { id?: string
   return NextResponse.json(turma)
 }
 
-export async function DELETE(request: NextRequest, context: { params: { id?: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   const session = await requireAdmin(request)
   if (!session?.adminId) {
     return NextResponse.json({ message: "Não autorizado." }, { status: 401 })
   }
 
-  const id = context.params?.id ?? request.nextUrl.pathname.split("/").pop()
+  const params = await context.params
+  const id = params?.id ?? request.nextUrl.pathname.split("/").pop()
   if (!id) {
     return NextResponse.json({ message: "ID da turma ausente." }, { status: 400 })
   }
