@@ -36,6 +36,7 @@ export default function AdminAlunosPage() {
   const [openEditar, setOpenEditar] = useState(false)
   const [alunoEditando, setAlunoEditando] = useState<Aluno | null>(null)
   const [erro, setErro] = useState("")
+  const [mostrarInativos, setMostrarInativos] = useState(false)
   const [form, setForm] = useState({
     nome: "",
     dataNascimento: "",
@@ -56,8 +57,9 @@ export default function AdminAlunosPage() {
 
   async function carregarDados() {
     try {
+      const query = mostrarInativos ? "?inativos=true" : ""
       const [alunosData, turmasData] = await Promise.all([
-        apiFetch<Aluno[]>("/api/admin/alunos"),
+        apiFetch<Aluno[]>(`/api/admin/alunos${query}`),
         apiFetch<Turma[]>("/api/admin/turmas"),
       ])
       setAlunos(alunosData)
@@ -70,7 +72,7 @@ export default function AdminAlunosPage() {
 
   useEffect(() => {
     carregarDados()
-  }, [])
+  }, [mostrarInativos])
 
   async function criarAluno() {
     try {
@@ -144,6 +146,13 @@ export default function AdminAlunosPage() {
         <div>
           <h1 className="text-2xl font-semibold">Alunos</h1>
           <p className="text-sm text-muted-foreground">Cadastro e vínculos com turmas.</p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Checkbox
+            checked={mostrarInativos}
+            onCheckedChange={(value) => setMostrarInativos(Boolean(value))}
+          />
+          Mostrar inativos
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
