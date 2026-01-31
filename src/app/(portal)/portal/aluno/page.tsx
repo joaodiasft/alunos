@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { RoleGuard } from "@/components/auth/role-guard"
 import { PortalShell } from "@/components/layout/portal-shell"
@@ -51,9 +51,27 @@ export default function PortalAlunoPage() {
   const router = useRouter()
   const [data, setData] = useState<Summary | null>(null)
 
-  useEffect(() => {
-    apiFetch<Summary>("/api/portal/aluno/summary").then(setData).catch(() => setData(null))
+  const carregarResumo = useCallback(async () => {
+    try {
+      const resumo = await apiFetch<Summary>("/api/portal/aluno/summary")
+      setData(resumo)
+    } catch {
+      setData(null)
+    }
   }, [])
+
+  useEffect(() => {
+    carregarResumo()
+    const intervalo = window.setInterval(carregarResumo, 60000)
+    const handleFocus = () => carregarResumo()
+    window.addEventListener("focus", handleFocus)
+    document.addEventListener("visibilitychange", handleFocus)
+    return () => {
+      window.clearInterval(intervalo)
+      window.removeEventListener("focus", handleFocus)
+      document.removeEventListener("visibilitychange", handleFocus)
+    }
+  }, [carregarResumo])
 
   const pendentes = useMemo(
     () => data?.financeiro.filter((item) => item.status !== "PAGO") ?? [],

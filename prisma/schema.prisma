@@ -55,6 +55,16 @@ enum FormaPagamento {
   CARTAO
 }
 
+enum LancamentoTipo {
+  ENTRADA
+  SAIDA
+}
+
+enum LancamentoCategoria {
+  FIXA
+  VARIAVEL
+}
+
 model AdminUser {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -278,6 +288,20 @@ model Pagamento {
   createdAt    DateTime      @default(now())
 
   mensalidade Mensalidade @relation(fields: [mensalidadeId], references: [id])
+}
+
+model LancamentoFinanceiro {
+  id          String            @id @default(cuid())
+  tipo        LancamentoTipo
+  categoria   LancamentoCategoria
+  descricao   String
+  valor       Int
+  data        DateTime
+  observacoes String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([data, tipo, categoria])
 }
 
 model LogSistema {
