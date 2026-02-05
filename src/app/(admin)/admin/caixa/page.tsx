@@ -22,8 +22,16 @@ type Lancamento = {
   observacoes?: string | null
 }
 
+type Turma = {
+  id: string
+  nome: string
+  planoFinanceiro: { valorMatricula: number } | null
+  alunos: { inicioEm: string }[]
+}
+
 export default function AdminCaixaPage() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
+  const [turmas, setTurmas] = useState<Turma[]>([])
   const [month, setMonth] = useState("")
   const [tipo, setTipo] = useState("")
   const [categoria, setCategoria] = useState("")
@@ -31,6 +39,7 @@ export default function AdminCaixaPage() {
   const [openEditar, setOpenEditar] = useState(false)
   const [editando, setEditando] = useState<Lancamento | null>(null)
   const [erro, setErro] = useState("")
+  const [carregando, setCarregando] = useState(false)
   const [form, setForm] = useState({
     tipo: "ENTRADA",
     categoria: "FIXA",
@@ -49,17 +58,49 @@ export default function AdminCaixaPage() {
   })
 
   async function carregar() {
+    setCarregando(true)
+    setErro("")
     const query = new URLSearchParams()
     if (month) query.set("month", month)
     if (tipo) query.set("tipo", tipo)
     if (categoria) query.set("categoria", categoria)
-    const data = await apiFetch<Lancamento[]>(`/api/admin/financeiro/lancamentos?${query}`)
-    setLancamentos(data)
+    try {
+      const [data, turmasData] = await Promise.all([
+        apiFetch<Lancamento[]>(`/api/admin/financeiro/lancamentos?${query}`),
+        apiFetch<Turma[]>("/api/admin/turmas"),
+      ])
+      setLancamentos(data)
+      setTurmas(turmasData)
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao carregar lançamentos.")
+      setLancamentos([])
+      setTurmas([])
+    } finally {
+      setCarregando(false)
+    }
   }
 
   useEffect(() => {
     carregar()
   }, [month, tipo, categoria])
+
+  const totalMatriculas = useMemo(() => {
+    if (turmas.length === 0) return 0
+    const [yearStr, monthStr] = month.split("-")
+    const year = Number(yearStr)
+    const monthIndex = Number(monthStr)
+    return turmas.reduce((acc, turma) => {
+      const valorMatricula = turma.planoFinanceiro?.valorMatricula ?? 0
+      if (!valorMatricula) return acc
+      const matriculasNoPeriodo = turma.alunos.filter((alunoTurma) => {
+        if (!month) return true
+        if (!year || !monthIndex) return true
+        const inicio = new Date(alunoTurma.inicioEm)
+        return inicio.getFullYear() === year && inicio.getMonth() === monthIndex - 1
+      }).length
+      return acc + valorMatricula * matriculasNoPeriodo
+    }, 0)
+  }, [month, turmas])
 
   const totais = useMemo(() => {
     const totalEntradas = lancamentos
@@ -68,8 +109,15 @@ export default function AdminCaixaPage() {
     const totalSaidas = lancamentos
       .filter((item) => item.tipo === "SAIDA")
       .reduce((acc, item) => acc + item.valor, 0)
-    return { totalEntradas, totalSaidas, saldo: totalEntradas - totalSaidas }
-  }, [lancamentos])
+    const totalEntradasComMatriculas = totalEntradas + totalMatriculas
+    return {
+      totalEntradas,
+      totalMatriculas,
+      totalEntradasComMatriculas,
+      totalSaidas,
+      saldo: totalEntradasComMatriculas - totalSaidas,
+    }
+  }, [lancamentos, totalMatriculas])
 
   async function salvar() {
     if (!form.descricao || !form.valor || !form.data) {
@@ -77,27 +125,31 @@ export default function AdminCaixaPage() {
       return
     }
     setErro("")
-    await apiFetch("/api/admin/financeiro/lancamentos", {
-      method: "POST",
-      body: JSON.stringify({
-        tipo: form.tipo,
-        categoria: form.categoria,
-        descricao: form.descricao,
-        valor: Number(form.valor) * 100,
-        data: form.data,
-        observacoes: form.observacoes || undefined,
-      }),
-    })
-    setOpen(false)
-    setForm({
-      tipo: "ENTRADA",
-      categoria: "FIXA",
-      descricao: "",
-      valor: "",
-      data: "",
-      observacoes: "",
-    })
-    await carregar()
+    try {
+      await apiFetch("/api/admin/financeiro/lancamentos", {
+        method: "POST",
+        body: JSON.stringify({
+          tipo: form.tipo,
+          categoria: form.categoria,
+          descricao: form.descricao,
+          valor: Number(form.valor) * 100,
+          data: form.data,
+          observacoes: form.observacoes || undefined,
+        }),
+      })
+      setOpen(false)
+      setForm({
+        tipo: "ENTRADA",
+        categoria: "FIXA",
+        descricao: "",
+        valor: "",
+        data: "",
+        observacoes: "",
+      })
+      await carregar()
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao salvar lançamento.")
+    }
   }
 
   function abrirEdicao(item: Lancamento) {
@@ -120,27 +172,36 @@ export default function AdminCaixaPage() {
       return
     }
     setErro("")
-    await apiFetch(`/api/admin/financeiro/lancamentos/${editando.id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        tipo: formEdicao.tipo,
-        categoria: formEdicao.categoria,
-        descricao: formEdicao.descricao,
-        valor: Number(formEdicao.valor) * 100,
-        data: formEdicao.data,
-        observacoes: formEdicao.observacoes || undefined,
-      }),
-    })
-    setOpenEditar(false)
-    setEditando(null)
-    await carregar()
+    try {
+      await apiFetch(`/api/admin/financeiro/lancamentos/${editando.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          tipo: formEdicao.tipo,
+          categoria: formEdicao.categoria,
+          descricao: formEdicao.descricao,
+          valor: Number(formEdicao.valor) * 100,
+          data: formEdicao.data,
+          observacoes: formEdicao.observacoes || undefined,
+        }),
+      })
+      setOpenEditar(false)
+      setEditando(null)
+      await carregar()
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao salvar edição.")
+    }
   }
 
   async function excluir(id: string) {
     const confirmar = window.confirm("Deseja excluir este lançamento?")
     if (!confirmar) return
-    await apiFetch(`/api/admin/financeiro/lancamentos/${id}`, { method: "DELETE" })
-    await carregar()
+    setErro("")
+    try {
+      await apiFetch(`/api/admin/financeiro/lancamentos/${id}`, { method: "DELETE" })
+      await carregar()
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Erro ao excluir lançamento.")
+    }
   }
 
   return (
@@ -229,13 +290,21 @@ export default function AdminCaixaPage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle>Entradas</CardTitle>
+            <CardTitle>Entradas (com matrículas)</CardTitle>
           </CardHeader>
           <CardContent className="text-lg font-semibold text-success-foreground">
-            {formatCurrency(totais.totalEntradas)}
+            {formatCurrency(totais.totalEntradasComMatriculas)}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Matrículas</CardTitle>
+          </CardHeader>
+          <CardContent className="text-lg font-semibold text-success-foreground">
+            {formatCurrency(totais.totalMatriculas)}
           </CardContent>
         </Card>
         <Card>
@@ -313,28 +382,48 @@ export default function AdminCaixaPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {lancamentos.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{formatDate(item.data)}</TableCell>
-                  <TableCell className="font-medium">{item.descricao}</TableCell>
-                  <TableCell>
-                    <Badge className={item.tipo === "ENTRADA" ? "bg-success text-success-foreground" : "bg-danger text-danger-foreground"}>
-                      {item.tipo === "ENTRADA" ? "Entrada" : "Saída"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{item.categoria === "FIXA" ? "Fixa" : "Variável"}</TableCell>
-                  <TableCell>{formatCurrency(item.valor)}</TableCell>
-                  <TableCell>{item.observacoes ?? "-"}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => abrirEdicao(item)}>
-                      Editar
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => excluir(item.id)}>
-                      Excluir
-                    </Button>
+              {carregando ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-sm text-muted-foreground">
+                    Carregando lançamentos...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : lancamentos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-sm text-muted-foreground">
+                    Nenhum lançamento encontrado para os filtros atuais.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                lancamentos.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{formatDate(item.data)}</TableCell>
+                    <TableCell className="font-medium">{item.descricao}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          item.tipo === "ENTRADA"
+                            ? "bg-success text-success-foreground"
+                            : "bg-danger text-danger-foreground"
+                        }
+                      >
+                        {item.tipo === "ENTRADA" ? "Entrada" : "Saída"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{item.categoria === "FIXA" ? "Fixa" : "Variável"}</TableCell>
+                    <TableCell>{formatCurrency(item.valor)}</TableCell>
+                    <TableCell>{item.observacoes ?? "-"}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => abrirEdicao(item)}>
+                        Editar
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => excluir(item.id)}>
+                        Excluir
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
