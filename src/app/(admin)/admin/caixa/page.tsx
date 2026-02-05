@@ -22,19 +22,18 @@ type Lancamento = {
   observacoes?: string | null
 }
 
-type Turma = {
-  id: string
-  nome: string
-  planoFinanceiro: { valorMatricula: number } | null
-  alunos: { inicioEm: string }[]
+type CaixaSummary = {
+  lancamentos: Lancamento[]
+  totalMatriculas: number
 }
 
 export default function AdminCaixaPage() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
-  const [turmas, setTurmas] = useState<Turma[]>([])
+  const [totalMatriculas, setTotalMatriculas] = useState(0)
   const [month, setMonth] = useState("")
   const [tipo, setTipo] = useState("")
   const [categoria, setCategoria] = useState("")
+  const [search, setSearch] = useState("")
   const [open, setOpen] = useState(false)
   const [openEditar, setOpenEditar] = useState(false)
   const [editando, setEditando] = useState<Lancamento | null>(null)
@@ -65,16 +64,30 @@ export default function AdminCaixaPage() {
     if (tipo) query.set("tipo", tipo)
     if (categoria) query.set("categoria", categoria)
     try {
-      const [data, turmasData] = await Promise.all([
-        apiFetch<Lancamento[]>(`/api/admin/financeiro/lancamentos?${query}`),
-        apiFetch<Turma[]>("/api/admin/turmas"),
-      ])
-      setLancamentos(data)
-      setTurmas(turmasData)
+      const queryString = query.toString()
+      const data = await apiFetch<CaixaSummary>(
+        queryString ? `/api/admin/financeiro/caixa?${queryString}` : "/api/admin/financeiro/caixa"
+      )
+      setLancamentos(data.lancamentos)
+      setTotalMatriculas(data.totalMatriculas)
     } catch (error) {
-      setErro(error instanceof Error ? error.message : "Erro ao carregar lançamentos.")
-      setLancamentos([])
-      setTurmas([])
+      try {
+        const queryString = query.toString()
+        const fallback = await apiFetch<Lancamento[]>(
+          queryString
+            ? `/api/admin/financeiro/lancamentos?${queryString}`
+            : "/api/admin/financeiro/lancamentos"
+        )
+        setLancamentos(fallback)
+        setTotalMatriculas(0)
+        setErro(
+          "Não foi possível calcular matrículas agora. Lançamentos carregados normalmente."
+        )
+      } catch (fallbackError) {
+        setErro(fallbackError instanceof Error ? fallbackError.message : "Erro ao carregar lançamentos.")
+        setLancamentos([])
+        setTotalMatriculas(0)
+      }
     } finally {
       setCarregando(false)
     }
@@ -83,24 +96,6 @@ export default function AdminCaixaPage() {
   useEffect(() => {
     carregar()
   }, [month, tipo, categoria])
-
-  const totalMatriculas = useMemo(() => {
-    if (turmas.length === 0) return 0
-    const [yearStr, monthStr] = month.split("-")
-    const year = Number(yearStr)
-    const monthIndex = Number(monthStr)
-    return turmas.reduce((acc, turma) => {
-      const valorMatricula = turma.planoFinanceiro?.valorMatricula ?? 0
-      if (!valorMatricula) return acc
-      const matriculasNoPeriodo = turma.alunos.filter((alunoTurma) => {
-        if (!month) return true
-        if (!year || !monthIndex) return true
-        const inicio = new Date(alunoTurma.inicioEm)
-        return inicio.getFullYear() === year && inicio.getMonth() === monthIndex - 1
-      }).length
-      return acc + valorMatricula * matriculasNoPeriodo
-    }, 0)
-  }, [month, turmas])
 
   const totais = useMemo(() => {
     const totalEntradas = lancamentos
@@ -118,6 +113,32 @@ export default function AdminCaixaPage() {
       saldo: totalEntradasComMatriculas - totalSaidas,
     }
   }, [lancamentos, totalMatriculas])
+
+  const breakdown = useMemo(() => {
+    const entradasFixas = lancamentos
+      .filter((item) => item.tipo === "ENTRADA" && item.categoria === "FIXA")
+      .reduce((acc, item) => acc + item.valor, 0)
+    const entradasVariaveis = lancamentos
+      .filter((item) => item.tipo === "ENTRADA" && item.categoria === "VARIAVEL")
+      .reduce((acc, item) => acc + item.valor, 0)
+    const saidasFixas = lancamentos
+      .filter((item) => item.tipo === "SAIDA" && item.categoria === "FIXA")
+      .reduce((acc, item) => acc + item.valor, 0)
+    const saidasVariaveis = lancamentos
+      .filter((item) => item.tipo === "SAIDA" && item.categoria === "VARIAVEL")
+      .reduce((acc, item) => acc + item.valor, 0)
+    return { entradasFixas, entradasVariaveis, saidasFixas, saidasVariaveis }
+  }, [lancamentos])
+
+  const lancamentosFiltrados = useMemo(() => {
+    if (!search.trim()) return lancamentos
+    const termo = search.trim().toLowerCase()
+    return lancamentos.filter((item) => {
+      const descricao = item.descricao.toLowerCase()
+      const observacao = item.observacoes?.toLowerCase() ?? ""
+      return descricao.includes(termo) || observacao.includes(termo)
+    })
+  }, [lancamentos, search])
 
   async function salvar() {
     if (!form.descricao || !form.valor || !form.data) {
@@ -204,6 +225,55 @@ export default function AdminCaixaPage() {
     }
   }
 
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const previousMonth = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}`
+
+  function exportarCsv() {
+    const header = [
+      "Data",
+      "Descricao",
+      "Tipo",
+      "Categoria",
+      "Valor",
+      "Observacoes",
+    ]
+    const linhas = lancamentosFiltrados.map((item) => [
+      formatDate(item.data),
+      item.descricao,
+      item.tipo === "ENTRADA" ? "Entrada" : "Saida",
+      item.categoria === "FIXA" ? "Fixa" : "Variavel",
+      formatCurrency(item.valor),
+      item.observacoes ?? "",
+    ])
+    const linhasTotais = [
+      [],
+      ["Entradas (com matriculas)", formatCurrency(totais.totalEntradasComMatriculas)],
+      ["Matriculas", formatCurrency(totais.totalMatriculas)],
+      ["Saidas", formatCurrency(totais.totalSaidas)],
+      ["Saldo final", formatCurrency(totais.saldo)],
+    ]
+    const csv = [header, ...linhas, ...linhasTotais]
+      .map((row) =>
+        row
+          .map((cell) => {
+            const value = String(cell ?? "")
+            const escaped = value.replace(/"/g, '""')
+            return `"${escaped}"`
+          })
+          .join(";")
+      )
+      .join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `caixa-${month || "geral"}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-6">
       {erro ? (
@@ -213,81 +283,98 @@ export default function AdminCaixaPage() {
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Entradas e saídas</h1>
+          <h1 className="text-2xl font-semibold">Caixa do cursinho</h1>
           <p className="text-sm text-muted-foreground">
-            Controle de despesas fixas/variáveis e receitas do cursinho.
+            Visão completa de entradas, saídas e matrículas no período selecionado.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>Novo lançamento</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Novo lançamento</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label>Tipo</Label>
-                <Select value={form.tipo} onValueChange={(value) => setForm({ ...form, tipo: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ENTRADA">Entrada</SelectItem>
-                    <SelectItem value="SAIDA">Saída</SelectItem>
-                  </SelectContent>
-                </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={carregar}>
+            Atualizar
+          </Button>
+          <Button variant="outline" onClick={() => setMonth(currentMonth)}>
+            Mês atual
+          </Button>
+          <Button variant="outline" onClick={() => setMonth(previousMonth)}>
+            Mês anterior
+          </Button>
+          <Button variant="ghost" onClick={() => setMonth("")}>
+            Limpar mês
+          </Button>
+          <Button variant="outline" onClick={exportarCsv}>
+            Exportar CSV
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>Novo lançamento</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Novo lançamento</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label>Tipo</Label>
+                  <Select value={form.tipo} onValueChange={(value) => setForm({ ...form, tipo: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ENTRADA">Entrada</SelectItem>
+                      <SelectItem value="SAIDA">Saída</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Categoria</Label>
+                  <Select
+                    value={form.categoria}
+                    onValueChange={(value) => setForm({ ...form, categoria: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FIXA">Fixa</SelectItem>
+                      <SelectItem value="VARIAVEL">Variável</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Descrição</Label>
+                  <Input
+                    value={form.descricao}
+                    onChange={(event) => setForm({ ...form, descricao: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Valor (R$)</Label>
+                  <Input
+                    type="number"
+                    value={form.valor}
+                    onChange={(event) => setForm({ ...form, valor: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Data</Label>
+                  <Input
+                    type="date"
+                    value={form.data}
+                    onChange={(event) => setForm({ ...form, data: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Observações</Label>
+                  <Input
+                    value={form.observacoes}
+                    onChange={(event) => setForm({ ...form, observacoes: event.target.value })}
+                  />
+                </div>
+                <Button onClick={salvar}>Salvar</Button>
               </div>
-              <div className="grid gap-2">
-                <Label>Categoria</Label>
-                <Select
-                  value={form.categoria}
-                  onValueChange={(value) => setForm({ ...form, categoria: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="FIXA">Fixa</SelectItem>
-                    <SelectItem value="VARIAVEL">Variável</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Descrição</Label>
-                <Input
-                  value={form.descricao}
-                  onChange={(event) => setForm({ ...form, descricao: event.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Valor (R$)</Label>
-                <Input
-                  type="number"
-                  value={form.valor}
-                  onChange={(event) => setForm({ ...form, valor: event.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Data</Label>
-                <Input
-                  type="date"
-                  value={form.data}
-                  onChange={(event) => setForm({ ...form, data: event.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Observações</Label>
-                <Input
-                  value={form.observacoes}
-                  onChange={(event) => setForm({ ...form, observacoes: event.target.value })}
-                />
-              </div>
-              <Button onClick={salvar}>Salvar</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -317,17 +404,48 @@ export default function AdminCaixaPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Saldo</CardTitle>
+            <CardTitle>Saldo final</CardTitle>
           </CardHeader>
           <CardContent className="text-lg font-semibold">{formatCurrency(totais.saldo)}</CardContent>
         </Card>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Entradas fixas</CardTitle>
+          </CardHeader>
+          <CardContent className="text-lg font-semibold">{formatCurrency(breakdown.entradasFixas)}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Entradas variáveis</CardTitle>
+          </CardHeader>
+          <CardContent className="text-lg font-semibold">
+            {formatCurrency(breakdown.entradasVariaveis)}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Saídas fixas</CardTitle>
+          </CardHeader>
+          <CardContent className="text-lg font-semibold">{formatCurrency(breakdown.saidasFixas)}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Saídas variáveis</CardTitle>
+          </CardHeader>
+          <CardContent className="text-lg font-semibold">
+            {formatCurrency(breakdown.saidasVariaveis)}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Filtros</CardTitle>
+          <CardTitle>Filtros e busca</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        <CardContent className="grid gap-4 md:grid-cols-4">
           <div className="grid gap-2">
             <Label>Mês</Label>
             <Input type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
@@ -361,6 +479,14 @@ export default function AdminCaixaPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="grid gap-2">
+            <Label>Buscar</Label>
+            <Input
+              placeholder="Descrição ou observação"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -388,14 +514,14 @@ export default function AdminCaixaPage() {
                     Carregando lançamentos...
                   </TableCell>
                 </TableRow>
-              ) : lancamentos.length === 0 ? (
+              ) : lancamentosFiltrados.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-sm text-muted-foreground">
                     Nenhum lançamento encontrado para os filtros atuais.
                   </TableCell>
                 </TableRow>
               ) : (
-                lancamentos.map((item) => (
+                lancamentosFiltrados.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{formatDate(item.data)}</TableCell>
                     <TableCell className="font-medium">{item.descricao}</TableCell>

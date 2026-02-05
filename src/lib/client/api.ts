@@ -17,13 +17,20 @@ export async function apiFetch<T>(url: string, init?: RequestInit) {
   })
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}))
+    const contentType = response.headers.get("content-type") ?? ""
+    const isJson = contentType.includes("application/json")
+    const payload = isJson ? await response.json().catch(() => ({})) : {}
     if (response.status === 401 && typeof window !== "undefined") {
       clearSession()
       window.location.href = "/"
     }
-    throw new Error(payload?.message ?? "Erro ao processar a requisição.")
+    const statusInfo = `Requisição falhou (${response.status})`
+    throw new Error(payload?.message ?? statusInfo)
   }
 
-  return (await response.json()) as T
+  const contentType = response.headers.get("content-type") ?? ""
+  if (contentType.includes("application/json")) {
+    return (await response.json()) as T
+  }
+  return (undefined as T)
 }
