@@ -378,65 +378,83 @@ export default function AdminCaixaPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Entradas (com matrículas)</CardTitle>
+        <Card className="border-2 border-green-200 bg-green-50/50 dark:bg-green-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Entradas (com matrículas)
+            </CardTitle>
           </CardHeader>
-          <CardContent className="text-lg font-semibold text-success-foreground">
-            {formatCurrency(totais.totalEntradasComMatriculas)}
+          <CardContent>
+            <div className="text-3xl font-bold text-green-700 dark:text-green-400">
+              {formatCurrency(totais.totalEntradasComMatriculas)}
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Matrículas</CardTitle>
+        <Card className="border-2 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Matrículas</CardTitle>
           </CardHeader>
-          <CardContent className="text-lg font-semibold text-success-foreground">
-            {formatCurrency(totais.totalMatriculas)}
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-700 dark:text-blue-400">
+              {formatCurrency(totais.totalMatriculas)}
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Saídas</CardTitle>
+        <Card className="border-2 border-red-200 bg-red-50/50 dark:bg-red-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Saídas</CardTitle>
           </CardHeader>
-          <CardContent className="text-lg font-semibold text-danger-foreground">
-            {formatCurrency(totais.totalSaidas)}
+          <CardContent>
+            <div className="text-3xl font-bold text-red-700 dark:text-red-400">
+              {formatCurrency(totais.totalSaidas)}
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Saldo final</CardTitle>
+        <Card className="border-2 border-purple-200 bg-purple-50/50 dark:bg-purple-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Saldo final</CardTitle>
           </CardHeader>
-          <CardContent className="text-lg font-semibold">{formatCurrency(totais.saldo)}</CardContent>
+          <CardContent>
+            <div className="text-3xl font-bold text-purple-700 dark:text-purple-400">
+              {formatCurrency(totais.saldo)}
+            </div>
+          </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Entradas fixas</CardTitle>
+        <Card className="border-l-4 border-l-green-600 shadow-md hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Entradas fixas</CardTitle>
           </CardHeader>
-          <CardContent className="text-lg font-semibold">{formatCurrency(breakdown.entradasFixas)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Entradas variáveis</CardTitle>
-          </CardHeader>
-          <CardContent className="text-lg font-semibold">
-            {formatCurrency(breakdown.entradasVariaveis)}
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(breakdown.entradasFixas)}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Saídas fixas</CardTitle>
+        <Card className="border-l-4 border-l-emerald-600 shadow-md hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Entradas variáveis
+            </CardTitle>
           </CardHeader>
-          <CardContent className="text-lg font-semibold">{formatCurrency(breakdown.saidasFixas)}</CardContent>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(breakdown.entradasVariaveis)}</div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Saídas variáveis</CardTitle>
+        <Card className="border-l-4 border-l-red-600 shadow-md hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Saídas fixas</CardTitle>
           </CardHeader>
-          <CardContent className="text-lg font-semibold">
-            {formatCurrency(breakdown.saidasVariaveis)}
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(breakdown.saidasFixas)}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-orange-600 shadow-md hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Saídas variáveis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(breakdown.saidasVariaveis)}</div>
           </CardContent>
         </Card>
       </div>
